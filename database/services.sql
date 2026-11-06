@@ -6,14 +6,17 @@ alter table public.tickets alter column user_id drop not null;
 alter table public.tickets add column guest_email text;
 create table private.worker_config(id boolean primary key default true check(id),secret text not null);
 insert into private.worker_config(secret) values(encode(extensions.gen_random_bytes(32),'hex'));
-create table private.mail_queue(id uuid primary key default gen_random_uuid(),user_id uuid not null references public.profiles on delete cascade,event_id uuid references public.events on delete cascade,subject text not null,body text not null,dedupe_key text unique not null,status text not null default 'pending',attempts integer not null default 0,claimed_at timestamptz,created_at timestamptz not null default now());
+create table private.mail_queue(id uuid primary key default gen_random_uuid(),user_id uuid not null references public.profiles on delete cascade,event_id uuid references public.events on delete cascade,sender_id uuid references public.profiles on delete set null,subject text not null,body text not null,dedupe_key text unique not null,status text not null default 'pending',attempts integer not null default 0,claimed_at timestamptz,created_at timestamptz not null default now());
 create table private.rate_limit(key text primary key,window_start timestamptz not null default now(),count integer not null default 1);
 alter table private.mail_queue enable row level security;
 alter table private.worker_config enable row level security;
 alter table private.rate_limit enable row level security;
 create or replace function public.plania_service(op text,uid uuid default null,payload jsonb default '{}') returns jsonb language plpgsql security definer set search_path='' as $$declare result jsonb; allowed boolean;begin
-if auth.role()<>'service_role' then raise exception 'Not authorized';end if;
-if op='smtp-get' then select to_jsonb(s) into result from private.smtp_settings s where user_id=uid;return result;
+if coalesce(auth.jwt()->>'role','')<>'service_role' then raise exception 'Not authorized';end if;
+if op='session-check' then select jsonb_build_object('valid',exists(select 1 from auth.sessions s where s.id=(payload->>'session_id')::uuid and s.user_id=uid and (s.not_after is null or s.not_after>now()))) into result;return result;
+elsif op='sessions-revoke' then delete from auth.sessions where user_id=uid;return '{"ok":true}';
+elsif op='crypto-key' then select jsonb_build_object('secret',secret) into result from private.worker_config;return result;
+elsif op='smtp-get' then select to_jsonb(s) into result from private.smtp_settings s where user_id=uid;return result;
 elsif op='smtp-save' then insert into private.smtp_settings(user_id,encrypted_settings,summary_enabled,summary_hour) values(uid,payload->>'encrypted_settings',coalesce((payload->>'summary_enabled')::boolean,false),coalesce((payload->>'summary_hour')::integer,7)) on conflict(user_id) do update set encrypted_settings=excluded.encrypted_settings,summary_enabled=excluded.summary_enabled,summary_hour=excluded.summary_hour,updated_at=now();return '{"ok":true}';
 elsif op='worker-check' then select secret=payload->>'secret' into allowed from private.worker_config;return jsonb_build_object('allowed',coalesce(allowed,false));
 elsif op='queue-take' then with q as(select id from private.mail_queue where (status='pending' or (status='sending' and claimed_at<now()-interval '5 minutes')) and attempts<3 order by created_at limit 15 for update skip locked), upd as(update private.mail_queue m set status='sending',attempts=attempts+1,claimed_at=now() from q where m.id=q.id returning m.*) select coalesce(jsonb_agg(to_jsonb(upd)),'[]') into result from upd;return result;
@@ -33,7 +36,7 @@ revoke all on function private.validate_attachment() from public;
 create trigger attachment_validate before insert or update on public.attachments for each row execute function private.validate_attachment();
 create or replace function private.process_notifications() returns void language plpgsql security definer set search_path='' as $$begin
 insert into public.notifications(user_id,event_id,title,message,dedupe_key)
-select e.user_id,e.id,e.title,'Tu evento empieza el '||to_char(e.starts_at at time zone p.timezone,'DD/MM/YYYY HH24:MI'),'event:'||e.id||':'||e.updated_at||':'||r.m
+select e.user_id,e.id,e.title,'Tu evento empieza el '||to_char(e.starts_at at time zone p.timezone,'DD/MM/YYYY HH24:MI'),'event:'||e.id||':'||e.starts_at||':'||r.m
 from public.events e join public.profiles p on p.id=e.user_id cross join lateral unnest(e.reminders) r(m)
 where p.status='active' and e.status<>'cancelled' and e.deleted_at is null and e.starts_at-r.m*interval '1 minute'<=now() and e.starts_at-r.m*interval '1 minute'>now()-interval '2 minutes'
 on conflict(dedupe_key) where dedupe_key is not null do nothing;
@@ -41,8 +44,8 @@ insert into public.notifications(user_id,announcement_id,title,message)
 select p.id,a.id,a.title,a.message from public.announcements a join public.profiles p on p.status='active'
 where a.starts_at<=now() and (a.expires_at is null or a.expires_at>now()) and (a.audience='all' or (a.audience='selected' and p.id=any(a.recipients)) or a.audience=p.role or a.audience=p.status)
 on conflict(user_id,announcement_id) where announcement_id is not null do nothing;
-insert into private.mail_queue(user_id,event_id,subject,body,dedupe_key)
-select n.user_id,n.event_id,n.title,n.message,'notice:'||n.id from public.notifications n join private.smtp_settings s on s.user_id=n.user_id left join public.announcements a on a.id=n.announcement_id
+insert into private.mail_queue(user_id,event_id,subject,body,dedupe_key,sender_id)
+select n.user_id,n.event_id,n.title,n.message,'notice:'||n.id,coalesce(a.author_id,n.user_id) from public.notifications n left join public.announcements a on a.id=n.announcement_id join private.smtp_settings s on s.user_id=coalesce(a.author_id,n.user_id)
 where n.created_at>now()-interval '10 minutes' and (n.event_id is not null or a.send_email) on conflict(dedupe_key) do nothing;
 insert into private.mail_queue(user_id,subject,body,dedupe_key)
 select p.id,'Tu agenda de hoy · PlanIA',coalesce((select string_agg(to_char(e.starts_at at time zone p.timezone,'HH24:MI')||' · '||e.title,E'\n' order by e.starts_at) from public.events e where e.user_id=p.id and e.deleted_at is null and e.status<>'cancelled' and e.starts_at<(date_trunc('day',now() at time zone p.timezone)+interval '1 day') at time zone p.timezone and e.ends_at>date_trunc('day',now() at time zone p.timezone) at time zone p.timezone),'Hoy no tienes eventos. Disfruta de tu día.'),'summary:'||p.id||':'||(now() at time zone p.timezone)::date

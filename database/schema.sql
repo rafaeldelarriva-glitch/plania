@@ -51,7 +51,7 @@ revoke all on function private.initialize_user() from public;
 create trigger initialize_user after insert on auth.users for each row execute function private.initialize_user();
 -- Only verified owner identity is bootstrapped; access still requires a valid Auth session.
 create or replace function private.protect_profile() returns trigger language plpgsql security definer set search_path='' as $$begin
-if (new.role<>old.role or new.status<>old.status or new.email<>old.email or new.id<>old.id) and not private.is_admin() and current_user<>'supabase_auth_admin' and auth.uid() is not null then raise exception 'Solo administración puede cambiar permisos';end if;
+if (new.role<>old.role or new.status<>old.status or new.email<>old.email or new.id<>old.id or new.must_change_password<>old.must_change_password) and not private.is_admin() and current_user<>'supabase_auth_admin' and auth.uid() is not null then raise exception 'Solo administración puede cambiar permisos';end if;
 if old.role='admin' and old.status='active' and (new.role<>'admin' or new.status<>'active') then
 perform pg_advisory_xact_lock(8173201);
 if not exists(select 1 from public.profiles where id<>old.id and role='admin' and status='active') then raise exception 'Debe quedar un administrador activo';end if;end if;return new;end$$;

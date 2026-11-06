@@ -1,0 +1,28 @@
+begin;
+insert into auth.users(id,email,raw_user_meta_data) values('00000000-0000-4000-8000-000000000001','rls-user-1@example.invalid','{"full_name":"RLS Fixture 1"}'),('00000000-0000-4000-8000-000000000002','rls-user-2@example.invalid','{"full_name":"RLS Fixture 2"}');
+update public.profiles set status='active' where id in('00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000002');
+insert into auth.sessions(id,user_id,aal) values('10000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000001','aal1');
+insert into public.events(user_id,title,starts_at,ends_at) values('00000000-0000-4000-8000-000000000001','User one private','2026-11-01 09:00+01','2026-11-01 10:00+01'),('00000000-0000-4000-8000-000000000002','User two private','2026-11-01 09:00+01','2026-11-01 10:00+01');
+insert into public.tickets(id,user_id,subject,message) values('20000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000001','Private support','Test'),('20000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000002','Other support','Test');
+insert into public.support_attachments(user_id,ticket_id,name,path) values('00000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000002','Private screenshot','00000000-0000-4000-8000-000000000002/tickets/20000000-0000-4000-8000-000000000002/test');
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000001","role":"authenticated","session_id":"10000000-0000-4000-8000-000000000001"}',true);
+set local role authenticated;
+do $$begin
+if (select count(*) from public.events)<>1 then raise exception 'FAIL: cross-user read';end if;
+if (select count(*) from public.support_attachments)<>0 then raise exception 'FAIL: support file privacy';end if;
+if (select count(*) from public.profiles)<>1 then raise exception 'FAIL: profile privacy';end if;
+begin update public.profiles set role='admin' where id='00000000-0000-4000-8000-000000000001';raise exception 'FAIL: self elevation accepted';exception when raise_exception then if sqlerrm like 'FAIL:%' then raise;end if;end;
+begin insert into public.events(user_id,title,starts_at,ends_at) values('00000000-0000-4000-8000-000000000002','Illegal','2026-11-01 09:00+01','2026-11-01 10:00+01');raise exception 'FAIL: cross-user write';exception when insufficient_privilege then null;end;
+begin perform public.plania_service('smtp-get','00000000-0000-4000-8000-000000000002');raise exception 'FAIL: SMTP access';exception when insufficient_privilege then null;end;
+end$$;
+reset role;
+select set_config('request.jwt.claims','{}',true);
+update public.profiles set status='blocked' where id='00000000-0000-4000-8000-000000000001';
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000001","role":"authenticated","session_id":"10000000-0000-4000-8000-000000000001"}',true);
+set local role authenticated;
+do $$begin if (select count(*) from public.events)<>0 then raise exception 'FAIL: blocked user can read events';end if;end$$;
+reset role;
+select set_config('request.jwt.claims','{}',true);
+delete from auth.users where id='00000000-0000-4000-8000-000000000001';
+set constraints all immediate;
+rollback;
