@@ -49,3 +49,7 @@ Antes de uso general, completar prueba de registro/confirmación/correo con la c
 ## Guía de bienvenida
 
 `database/onboarding.sql` añade el progreso por usuario. Se aplica tras los scripts iniciales; el despliegue actual ya lo incluye. La guía se abre automáticamente al primer acceso activo, recuerda el paso entre dispositivos y puede omitirse o repetirse desde Ayuda. Sus acciones abren la sección concreta del perfil, manteniendo un acompañamiento compacto para continuar después de guardar los cambios. Los ajustes importantes se marcan como revisados por el usuario; terminar la guía no implica haber configurado SMTP ni completado los festivos.
+
+## Icono de inicio en iPhone y Android
+
+El manifiesto incluye iconos PNG de 192 y 512 píxeles. `apple-touch-icon.png` ofrece el icono de 180 píxeles para Safari en iOS. En iPhone, abrir PlanIA en Safari → Compartir → Añadir a pantalla de inicio → Abrir como app web (si aparece) → Añadir. El icono utiliza el mismo logo del escritorio. La comprobación de los archivos y el despliegue no sustituyen una prueba de instalación en un iPhone físico.
