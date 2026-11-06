@@ -1,0 +1,10 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {leaveUsage,defaultTimes,exportCalendar,parseCalendar,expandSeries,overlaps} from '../src/calendar.js';
+process.env.TZ='Europe/Madrid';
+const cats=[{id:'v',leave_kind:'vacation'}];const event={id:'x',category_id:'v',title:'Vacaciones',starts_at:'2026-11-02T00:00:00+01:00',ends_at:'2026-11-09T00:00:00+01:00',all_day:true,status:'planned'};
+test('seven natural days less holiday, duplicate overlaps count once',()=>assert.equal(leaveUsage([event,event],cats,[{date:'2026-11-03'}],2026,'vacation').total,6));
+test('cancelled and trashed consume nothing',()=>assert.equal(leaveUsage([{...event,status:'cancelled'},{...event,deleted_at:'now'}],cats,[],2026,'vacation').total,0));
+test('night ends next day and is twelve hours',()=>{const t=defaultTimes('2026-11-06',{start_time:'20:00',end_time:'08:00',next_day:true});assert.equal(t.ends_at,'2026-11-07T08:00');assert.equal((new Date(t.ends_at)-new Date(t.starts_at))/36e5,12)});
+test('cross-year usage is clipped to selected year',()=>{assert.equal(leaveUsage([{...event,starts_at:'2026-12-30T00:00:00+01:00',ends_at:'2027-01-03T00:00:00+01:00'}],cats,[],2026,'vacation').total,2)});
+test('iCalendar preserves stable UID and all-day exclusive end',()=>{const imported=parseCalendar(exportCalendar([event]));assert.equal(imported[0].external_uid,'x@plania');assert.equal(imported[0].all_day,true);assert.equal(imported[0].ends_at,new Date(event.ends_at).toISOString())});
+test('weekly repeats preserve local clock through daylight saving',()=>{const s=expandSeries({...event,starts_at:'2026-10-20T09:00:00+02:00',ends_at:'2026-10-20T10:00:00+02:00'},'weekly',2);assert.equal(new Date(s[1].starts_at).getHours(),9)});
+test('touching intervals are not overlapping',()=>assert.equal(overlaps({...event,id:'a'}, {...event,id:'b',starts_at:event.ends_at,ends_at:'2026-11-10T00:00:00+01:00'}),false));

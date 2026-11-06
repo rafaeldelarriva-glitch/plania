@@ -1,0 +1,3 @@
+import {createClient} from '@supabase/supabase-js';
+export const supabase=createClient('https://plmlusinojpnkqckqdxo.supabase.co','sb_publishable_25LN5o9p_9N-dYm3YagnWw_DsuoFXZ2');
+export async function query(table,method='select',payload){let q=supabase.from(table);if(method==='select')q=q.select('*');else if(method==='insert')q=q.insert(payload).select();else if(method==='upsert')q=q.upsert(payload).select();else if(method==='update')q=q.update(payload.data).eq('id',payload.id).select();else if(method==='delete')q=q.delete().eq('id',payload);const {data,error}=await q;if(error)throw error;return data;}

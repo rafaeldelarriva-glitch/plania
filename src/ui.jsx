@@ -1,0 +1,6 @@
+import React from 'react';import {X,Info,LoaderCircle} from 'lucide-react';
+export function Modal({title,children,onClose,wide=false}){return <div className="modal-backdrop" onMouseDown={e=>e.target===e.currentTarget&&onClose()}><section role="dialog" aria-modal="true" aria-label={title} className={'modal '+(wide?'wide':'')}><header><h2>{title}</h2><button className="icon-button" onClick={onClose} aria-label="Cerrar"><X size={20}/></button></header>{children}</section></div>}
+export function Help({text}){const [open,setOpen]=React.useState(false);return <span className="help"><button type="button" className="icon-button tiny" aria-label="Información" onClick={()=>setOpen(!open)}><Info size={15}/></button>{open&&<span className="help-text" role="status">{text}</span>}</span>}
+export function Field({label,children,hint}){return <label className="field"><span>{label}{hint&&<Help text={hint}/>}</span>{children}</label>}
+export function Empty({icon:Icon,title,description,action}){return <div className="empty">{Icon&&<Icon size={30}/>}<h3>{title}</h3><p>{description}</p>{action}</div>}
+export function Submit({busy,children='Guardar cambios'}){return <button className="primary" disabled={busy}>{busy?<><LoaderCircle className="spin" size={16}/> Guardando…</>:children}</button>}

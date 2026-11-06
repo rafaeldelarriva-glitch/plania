@@ -1,0 +1,3 @@
+import React from 'react';import {createRoot} from 'react-dom/client';import App from './App';import './styles.css';
+class ErrorBoundary extends React.Component{constructor(p){super(p);this.state={error:null}}static getDerivedStateFromError(error){return {error}}render(){return this.state.error?<div className="pending"><h1>No se ha podido mostrar esta pantalla.</h1><p>Recarga PlanIA para volver a intentarlo.</p><button className="primary" onClick={()=>location.reload()}>Recargar</button></div>:this.props.children}}
+createRoot(document.getElementById('root')).render(<ErrorBoundary><App/></ErrorBoundary>);if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
