@@ -53,3 +53,7 @@ Antes de uso general, completar prueba de registro/confirmación/correo con la c
 ## Icono de inicio en iPhone y Android
 
 El manifiesto incluye iconos PNG de 192 y 512 píxeles. `apple-touch-icon.png` ofrece el icono de 180 píxeles para Safari en iOS. En iPhone, abrir PlanIA en Safari → Compartir → Añadir a pantalla de inicio → Abrir como app web (si aparece) → Añadir. El icono utiliza el mismo logo del escritorio. La comprobación de los archivos y el despliegue no sustituyen una prueba de instalación en un iPhone físico.
+
+## Legibilidad
+
+La interfaz utiliza una escala de texto mayor con unidades rem, controles de móvil de al menos 16 px y logos de accesos directos de 56 px en escritorio y 52 px en móvil. Las tarjetas se redistribuyen en tres columnas o dos en pantallas estrechas. La vista diaria comparte una escala horaria de 96 px entre el posicionamiento de eventos y sus líneas para mantener alineados horarios y duración.
