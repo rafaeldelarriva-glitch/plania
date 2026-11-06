@@ -1,0 +1,4 @@
+# This public GET endpoint authenticates subscriptions with a private token.
+# Management POST requests verify the user session and MFA in the handler.
+[functions.plania-calendar]
+verify_jwt = false

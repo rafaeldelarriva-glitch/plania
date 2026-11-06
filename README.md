@@ -57,3 +57,8 @@ El manifiesto incluye iconos PNG de 192 y 512 píxeles. `apple-touch-icon.png` o
 ## Legibilidad
 
 La interfaz utiliza una escala de texto mayor con unidades rem, controles de móvil de al menos 16 px y logos de accesos directos de 56 px en escritorio y 52 px en móvil. Las tarjetas se redistribuyen en tres columnas o dos en pantallas estrechas. La vista diaria comparte una escala horaria de 96 px entre el posicionamiento de eventos y sus líneas para mantener alineados horarios y duración.
+
+## Suscripción a calendarios externos
+Mi perfil → Calendario del móvil permite crear/renovar/revocar una suscripción privada de solo lectura, filtrada por tipologías. Se despliega `database/calendar-subscriptions.sql` y la Edge Function `plania-calendar` con `verify_jwt=false`: GET valida un token aleatorio de 256 bits (solo su SHA-256 se almacena); POST verifica usuario, sesión activa y MFA. La RPC es exclusiva de `service_role`, la tabla privada tiene RLS sin permisos de cliente. Nunca registrar las URL completas de suscripción en analítica propia. Archivos y enlaces no se publican. Las cuentas bloqueadas o eliminadas dejan de publicar. El proveedor externo controla el refresco y conserva sus propias copias.
+
+El feed mantiene UID por evento y LAST-MODIFIED/SEQUENCE; al eliminar/cancelar un evento desaparece del calendario publicado completo. Horarios UTC y días completos según zona del perfil. Las series de PlanIA ya se almacenan como eventos individuales. Renovar requiere sustituir la suscripción externa; no importar repetidamente el fichero. Para restauración, desplegar también `supabase/functions/plania-calendar/calendar.js`.
