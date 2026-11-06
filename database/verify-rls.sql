@@ -11,6 +11,10 @@ do $$begin
 if (select count(*) from public.events)<>1 then raise exception 'FAIL: cross-user read';end if;
 if (select count(*) from public.support_attachments)<>0 then raise exception 'FAIL: support file privacy';end if;
 if (select count(*) from public.profiles)<>1 then raise exception 'FAIL: profile privacy';end if;
+update public.profiles set onboarding='{"version":1,"status":"in_progress","step":3}' where id='00000000-0000-4000-8000-000000000001';
+if (select (onboarding->>'step')::integer from public.profiles where id='00000000-0000-4000-8000-000000000001')<>3 then raise exception 'FAIL: onboarding progress cannot be saved';end if;
+update public.profiles set onboarding='{"status":"completed"}' where id='00000000-0000-4000-8000-000000000002';
+if found then raise exception 'FAIL: onboarding cross-user update';end if;
 begin update public.profiles set role='admin' where id='00000000-0000-4000-8000-000000000001';raise exception 'FAIL: self elevation accepted';exception when raise_exception then if sqlerrm like 'FAIL:%' then raise;end if;end;
 begin insert into public.events(user_id,title,starts_at,ends_at) values('00000000-0000-4000-8000-000000000002','Illegal','2026-11-01 09:00+01','2026-11-01 10:00+01');raise exception 'FAIL: cross-user write';exception when insufficient_privilege then null;end;
 begin perform public.plania_service('smtp-get','00000000-0000-4000-8000-000000000002');raise exception 'FAIL: SMTP access';exception when insufficient_privilege then null;end;

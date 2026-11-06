@@ -45,3 +45,7 @@ El cron `plania-notifications` procesa cada minuto recordatorios y avisos. La co
 Los cambios de serie propagan el horario y la diferencia de días manteniendo las fechas relativas de las apariciones. La papelera se conserva 30 días por defecto; el usuario puede elegir 7, 30, 60, 90 días o desactivar la limpieza automática. La exportación Excel incluye eventos solapados con el intervalo con su duración completa, explicitado en la hoja Resumen. PDF usa Guardar como PDF del navegador e incluye anexo de detalle. Zona horaria de pantalla: la del dispositivo.
 
 Antes de uso general, completar prueba de registro/confirmación/correo con la cuenta propietaria y comprobar el flujo en dispositivos reales.
+
+## Guía de bienvenida
+
+`database/onboarding.sql` añade el progreso por usuario. Se aplica tras los scripts iniciales; el despliegue actual ya lo incluye. La guía se abre automáticamente al primer acceso activo, recuerda el paso entre dispositivos y puede omitirse o repetirse desde Ayuda. Sus acciones abren la sección concreta del perfil, manteniendo un acompañamiento compacto para continuar después de guardar los cambios. Los ajustes importantes se marcan como revisados por el usuario; terminar la guía no implica haber configurado SMTP ni completado los festivos.
